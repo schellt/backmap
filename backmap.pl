@@ -502,6 +502,8 @@ if($create_histo_switch == 1){
 		chomp $peak_cov;
 		my $n0 = `awk \'\$1==0{print \$2}\' $cov_hist_file`;
 		chomp $n0;
+		my $ymax = `sort -rgk2 $cov_hist_file | awk \'\$1!=0{print \$2}\' | head -1`;
+		chomp $ymax;
 	
 		open(R,'>',$cov_hist_file . ".plot.r") or die "ERROR\tCould not open file " . $cov_hist_file . "plot.r\n";
 		
@@ -513,7 +515,7 @@ if($create_histo_switch == 1){
 		else{
 			print R "plot(x[,1],x[,2],ylim=c(0,$peak_cov),log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\")\n";
 		}
-		print R "text(2.5,$peak_cov,\"N(0)=$n0\")\n";
+		print R "text(2.5,$ymax,\"N(0)=$n0\")\n";
 		print R "dev.off()";
 		
 		close R;
