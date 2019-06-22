@@ -507,7 +507,7 @@ if($create_histo_switch == 1){
 		
 		print R "x=read.table(\"$cov_hist_file\")\n";
 		print R "pdf(\"$cov_hist_file.pdf\")\n";
-		if($n0 < $peak_cov){
+		if($n0 > $peak_cov){
 			print R "plot(x[,1],x[,2],log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\")\n";
 		}
 		else{
