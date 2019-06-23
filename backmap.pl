@@ -557,6 +557,7 @@ if($estimate_genome_size_switch == 1){
 		print "\n";
 		print "Output\n";
 		print "==================\n";
+		print "Mapped nucleotides:   " . format_pref($total_nucs) . "b\n";
 		print "Peak coverage:        " . $peak_cov . "\n";
 		
 		my $genome_size_estimate = $total_nucs / $peak_cov;
