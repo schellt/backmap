@@ -121,9 +121,11 @@ for (my $i = 0; $i < scalar(@ARGV);$i++){
 	}
 	if ($ARGV[$i] eq "-bo"){
 		$bwa_opts = $ARGV[$i+1] . " ";	#nonsense flags are skipped from bwa
+		$ARGV[$i+1] = "\'$ARGV[$i+1]\'";
 	}
 	if ($ARGV[$i] eq "-qo"){
 		$qm_opts = $ARGV[$i+1] . " ";	#nonsense flags are skipped from qualimap
+		$ARGV[$i+1] = "\'$ARGV[$i+1]\'";
 	}
 	if ($ARGV[$i] eq "-nq"){
 		$run_bamqc_switch = 0;
@@ -509,11 +511,11 @@ if($create_histo_switch == 1){
 		
 		print R "x=read.table(\"$cov_hist_file\")\n";
 		print R "pdf(\"$cov_hist_file.pdf\")\n";
-		if($n0 > $peak_cov){
+		if($n0 < $ymax){
 			print R "plot(x[,1],x[,2],log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\")\n";
 		}
 		else{
-			print R "plot(x[,1],x[,2],ylim=c(0,$peak_cov),log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\")\n";
+			print R "plot(x[,1],x[,2],ylim=c(0,$ymax),log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\")\n";
 		}
 		print R "text(2.5,$ymax,\"N(0)=$n0\")\n";
 		print R "dev.off()";
