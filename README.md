@@ -11,6 +11,7 @@ The tools `bwa` and `samtools` need to be in your `$PATH`. The tools `qualimap`,
 `backmap.pl` will search for the following executables in your `$PATH`:
 
 Mandatory:
+- [Number::FormatEng](https://metacpan.org/pod/Number::FormatEng)
 - [bwa (mem)](https://github.com/lh3/bwa): `bwa`
 - [samtools](https://github.com/samtools/samtools): `samtools` 
 
