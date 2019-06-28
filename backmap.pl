@@ -338,7 +338,7 @@ if(not defined(can_run("bedtools"))){
 	$bedtools_version = "not detected";
 }
 else{
-	$bedtools_version = `bedtools --version | sed 's/^bedtools v//'`;
+	$bedtools_version = `bedtools --version | awk '{print \$2}' | sed 's/^v//'`;
 	chomp $bedtools_version;
 }
 
