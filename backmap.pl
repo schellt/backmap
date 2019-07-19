@@ -28,7 +28,7 @@ sub print_help{
 	print STDOUT "\tOR\n";
 	print STDOUT "\t-b STR\t\tBam file to calculate coverage from\n";
 	print STDOUT "\t\t\tSkips read mapping\n";
-	print STDOUT "\t\t\tOverrides -nh and -ne\n";
+	print STDOUT "\t\t\tOverrides -nh\n";
 	print STDOUT "\n";
 	print STDOUT "Options: [default]\n";
 	print STDOUT "\t-o STR\t\tOutput directory [.]\n";
@@ -246,7 +246,6 @@ if($prefix eq ""){
 if($bam ne "" and defined(can_run("bedtools"))){
 	if($create_histo_switch == 0 or $estimate_genome_size_switch == 0){
 		$create_histo_switch = 1;
-		$estimate_genome_size_switch = 1;
 		print STDERR "INFO\tCreating coverage histogram and estimating genome size\n";
 	}
 }
