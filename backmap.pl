@@ -246,7 +246,7 @@ if($prefix eq ""){
 if($bam ne "" and defined(can_run("bedtools"))){
 	if($create_histo_switch == 0 or $estimate_genome_size_switch == 0){
 		$create_histo_switch = 1;
-		print STDERR "INFO\tCreating coverage histogram and estimating genome size\n";
+		print STDERR "INFO\tCreating coverage histogram\n";
 	}
 }
 
