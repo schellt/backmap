@@ -160,6 +160,11 @@ if($assembly_path ne "" and $bam ne ""){
 	$input_error = 1;
 }
 
+if($assembly_path eq "" and $bam eq ""){
+	print STDERR "ERROR\tSpecify either -a or -b\n";
+	$input_error = 1;
+}
+
 if($assembly_path ne "" and $bam eq ""){
 	if(not defined(can_run("bwa"))){
 		print STDERR "ERROR\tbwa is not in your \$PATH\n";
