@@ -5,8 +5,9 @@ use warnings;
 use Cwd 'abs_path';
 use IPC::Cmd qw[can_run run];
 use Number::FormatEng qw(:all);
+use Parallel::Loops;
 
-my $version = "0.2";
+my $version = "0.3";
 
 sub print_help{
 	print STDOUT "\n";
@@ -270,7 +271,6 @@ my $samtools_threads = $threads - 1;
 if(not -d "$out_dir"){
 	print STDERR "INFO\tCreating output directory $out_dir\n";
 	$mkdir_cmd="mkdir -p $out_dir";
-#	exe_cmd($cmd,$verbose,$dry);
 }
 
 if($prefix eq ""){
@@ -284,10 +284,6 @@ if($prefix eq ""){
 }
 
 if(scalar(@bam) > 0){
-	if($prefix ne ""){
-		print STDERR "INFO\tIgnoring -pre $prefix\n";
-		$prefix = "";
-	}
 	if(defined(can_run("bedtools"))){
 		if($create_histo_switch == 0 or $estimate_genome_size_switch == 0){
 			$create_histo_switch = 1;
@@ -478,6 +474,15 @@ else{
 	chomp $rscript_version;
 }
 
+my $multiqc_version;
+if(not defined(can_run("multiqc"))){
+	$multiqc_version = "not detected";
+}
+else{
+	$multiqc_version = `multiqc --version 2> /dev/null | awk '{print \$NF}'`;
+	chomp $multiqc_version;
+}
+
 my $verbose_word = "No";
 if($verbose == 1){
 	$verbose_word = "Yes";
@@ -514,6 +519,7 @@ print "samtools:             " . $samtools_version . "\n";
 print "qualimap:             " . $qualimap_version . "\n";
 print "bedtools:             " . $bedtools_version . "\n";
 print "Rscript:              " . $rscript_version . "\n";
+print "multiqc:              " . $multiqc_version . "\n";
 print "\n";
 print "User defined input\n";
 print "==================\n";
@@ -695,10 +701,22 @@ if($run_bamqc_switch == 1){
 my %cov_files;
 my %peak_cov;
 my %n0_all;
-my $global_ymax = 0;
+my @global_ymax = ();
+
+my $maxProcs = scalar(@sorted_bams);
+if($threads < $maxProcs){
+	$maxProcs = $threads;
+}
+
 if($create_histo_switch == 1){
 	
-	foreach(@sorted_bams){
+	my $multiple_histos = Parallel::Loops->new($maxProcs);
+	$multiple_histos->share(\%cov_files);
+	$multiple_histos->share(\%peak_cov);
+	$multiple_histos->share(\%n0_all);
+	$multiple_histos->share(\@global_ymax);
+	
+	$multiple_histos->foreach( \@sorted_bams,  sub {
 		
 		my $tech = "Illumina";
 		if($_ =~ m/\.pb\.sort\.bam$/){
@@ -724,9 +742,7 @@ if($create_histo_switch == 1){
 			$n0_all{$tech} = $n0;
 			my $ymax = `sort -rgk2 $cov_hist_file | awk \'\$1!=0{print \$2}\' | head -1`;
 			chomp $ymax;
-			if($ymax > $global_ymax){
-				$global_ymax = $ymax;
-			}
+			push(@global_ymax,$ymax);
 			
 			open(R,'>',$cov_hist_file . ".plot.r") or die "ERROR\tCould not open file " . $cov_hist_file . "plot.r\n";
 			
@@ -753,20 +769,28 @@ if($create_histo_switch == 1){
 			$cmd = "Rscript $cov_hist_file.plot.r > /dev/null 2> /dev/null";
 			exe_cmd($cmd,$verbose,$dry);
 		}
-	}
+	});
+	
+	my @global_ymax = sort( {$b <=> $a} @global_ymax);
 	
 	if(scalar(@sorted_bams) > 1){
+		my $rscript = "$out_dir/plot.all.r";
+		if($prefix ne ""){
+			$rscript = "$out_dir/$prefix.plot.all.r";
+		}
 		if($dry == 0){
 			my @techs = ("Illumina","PacBio","Nanopore");
 			
-			open(RALL,'>',"$out_dir/plot.all.r") or die "ERROR\tCould not open file $out_dir/plot.all.r\n";
+			open(RALL,'>',"$rscript") or die "ERROR\tCould not open file $rscript\n";
 			
 			for(my $i = 0; $i < scalar(@techs); $i++){
 				if(exists($cov_files{$techs[$i]})){
 					print RALL "$techs[$i]=read.table(\"$cov_files{$techs[$i]}\")\n";
 				}
 			}
-			print RALL "pdf(\"$out_dir/plot.all.pdf\")\n";
+			my $pdf = $rscript;
+			$pdf =~ s/r$/pdf/;
+			print RALL "pdf(\"$pdf\")\n";
 			my @legend = ();
 			my @lty = ();
 			my @col = ();
@@ -775,7 +799,7 @@ if($create_histo_switch == 1){
 					push(@legend,"\"$techs[$i] N(0)=$n0_all{$techs[$i]}\"");
 					push(@lty,"1");
 					if($i == 0 and exists($cov_files{$techs[$i]})){
-						print RALL "plot($techs[$i]\[,1],$techs[$i]\[,2],log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\",main=\"$assembly\",ylim=c(0,$global_ymax))\n";
+						print RALL "plot($techs[$i]\[,1],$techs[$i]\[,2],log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\",main=\"$assembly\",ylim=c(0,$global_ymax[0]))\n";
 						push(@col,"\"black\"");
 					}
 					if($i == 1 and exists($cov_files{$techs[$i]})){
@@ -794,11 +818,11 @@ if($create_histo_switch == 1){
 			close RALL;
 		}
 		else{
-			print STDERR "I would create $out_dir/plot.all.r\n";
+			print STDERR "I would create $rscript\n";
 		}
 		
 		if(defined(can_run("Rscript"))){
-			$cmd = "Rscript $out_dir/plot.all.r > /dev/null 2> /dev/null";
+			$cmd = "Rscript $rscript > /dev/null 2> /dev/null";
 			exe_cmd($cmd,$verbose,$dry);
 		}
 	}
@@ -807,13 +831,12 @@ if($create_histo_switch == 1){
 
 if($estimate_genome_size_switch == 1){
 	
-	if($dry == 0){
-		print "\n";
-		print "Output\n";
-		print "======\n";
-	}
+	my %results;
+		
+        my $multiple_genome_size = Parallel::Loops->new($maxProcs);
+        $multiple_genome_size->share(\%results);
 	
-	foreach(@sorted_bams){
+	$multiple_genome_size->foreach( \@sorted_bams,  sub {
 		if($dry == 1){
 			print STDERR "CMD\tsort -rgk2 $_.cov-hist | awk \'\$1!=0{print \$1}\' | head -1\n";
 		}
@@ -822,6 +845,15 @@ if($estimate_genome_size_switch == 1){
 		exe_cmd($cmd,$verbose,$dry);
 		
 		if($dry == 0){
+			
+			my $tech = "Illumina";
+			if($_ =~ m/\.pb\.sort\.bam$/){
+				$tech = "PacBio";
+			}
+			if($_ =~ m/\.ont\.sort\.bam$/){
+				$tech = "Nanopore";
+			}
+			
 			my $assembly_length = 0;
 			my $assemly_perc = 0;
 			if($assembly ne ""){
@@ -836,30 +868,32 @@ if($estimate_genome_size_switch == 1){
 			my $total_nucs = `grep "bases mapped (cigar):" $_.stats | awk -F'\\t' '{print \$3}'`;
 			chomp $total_nucs;
 			
-			my $tech = "Illumina";
-			if($_ =~ m/\.pb\.sort\.bam$/){
-				$tech = "PacBio";
-			}
-			if($_ =~ m/\.ont\.sort\.bam$/){
-				$tech = "Nanopore";
-			}
-			
 			my $genome_size_estimate = $total_nucs / $peak_cov{$tech};
-			
-			print $tech . " (" . $_ . ")\n";
-			print "Mapped nucleotides:   " . round_format_pref($total_nucs) . "b\n";
-			print "Peak coverage:        " . $peak_cov{$tech} . "\n";
-			print "Genome size estimate: " . round_format_pref($genome_size_estimate) . "b\n";
+
+			$results{$tech} = $tech . " (" . $_ . ")\n" . "Mapped nucleotides:   " . round_format_pref($total_nucs) . "b\n" . "Peak coverage:        " . $peak_cov{$tech} . "\n" . "Genome size estimate: " . round_format_pref($genome_size_estimate) . "b\n";
 			if($assembly_length > 0){
 				$assemly_perc = sprintf("%.2f", ($assembly_length / $genome_size_estimate) * 100);
-				print "Assembly length:      " . round_format_pref($assembly_length) . "b ($assemly_perc% of estimate)\n";
+				$results{$tech} = $results{$tech} . "Assembly length:      " . round_format_pref($assembly_length) . "b ($assemly_perc% of estimate)\n";
 			}
+			
 		}
 		else{
 			print STDERR "CMD\tgrep \"bases mapped (cigar):\" $_.stats | awk -F\'\\t\' \'{print \$3}\'\n";
 		}
-	}
+	});
 	
+	if($dry == 0){
+		print "\n";
+		print "Output\n";
+		print "======\n";
+		
+		my @techs = ("Illumina","PacBio","Nanopore");
+		for (my $i = 0; $i < scalar(@techs); $i++){
+			if(exists($results{$techs[$i]})){
+				print $results{$techs[$i]};
+			}
+		}
+	}
 }
 
 exit;

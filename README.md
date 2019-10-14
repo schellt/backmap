@@ -1,17 +1,18 @@
-# backmap.pl v0.2
+# backmap.pl v0.3
 
 ## Description
-__Automatic read mapping and genome size estimate from coverage.__
+__Automatic read mapping and genome size estimation from coverage.__
 
-Automatic mapping of paired, unpaired, PacBio and Nanopore reads to an assembly with `bwa mem` or `minimap2`, execution of `qualimap bamqc` and estimation of genome size from mapped nucleotides divided by mode (>0).
-The tools `samtools`, `bwa` and/or `minimap2` need to be in your `$PATH`. The tools `qualimap`, `multiqc`, `bedtools` and `Rscript` are optional but needed to create the mapping quality report, coverage histogram and plot of the coverage distribution respectively.
+Automatic mapping of paired, unpaired, PacBio and Nanopore reads to an assembly with `bwa mem` or `minimap2`, execution of `qualimap bamqc` and estimation of genome size from mapped nucleotides divided by mode of the coverage distribution (>0). This method was first pulished in Schell et al. (2017) and is slightly refined in this script.  
+The tools `samtools`, `bwa` and/or `minimap2` need to be in your `$PATH`. The tools `qualimap`, `multiqc`, `bedtools` and `Rscript` are optional but needed to create the mapping quality report, coverage histogram as well as genome size estimation and to plot of the coverage distribution respectively.
 
 ## Dependencies
 
-`backmap.pl` will search for the following executables in your `$PATH`:
+`backmap.pl` needs the following perl modules and will search for executables in your `$PATH`:
 
 Mandatory:
 - [Number::FormatEng](https://metacpan.org/pod/Number::FormatEng)
+- [Parallel::Loops](https://metacpan.org/pod/Parallel::Loops)
 - [samtools](https://github.com/samtools/samtools): `samtools`
 
 Short read mapping:
@@ -23,8 +24,8 @@ Long read mapping:
 Optional:
 - [Qaulimap](http://qualimap.bioinfo.cipf.es/): `qualimap`
 - [MultiQC](https://multiqc.info/): `multiqc`
-- [bedtools](https://bedtools.readthedocs.io/en/latest/) `bedtools`
-- [Rscript](https://www.r-project.org/) `Rscript`
+- [bedtools](https://bedtools.readthedocs.io/en/latest/): `bedtools`
+- [Rscript](https://www.r-project.org/): `Rscript`
 
 ## Usage
 
@@ -73,4 +74,21 @@ Options: [default]
 ```
 
 ## Citation
-If you use this tool please cite the dependencies as well.
+Schell T, Feldmeyer B, Schmidt H, Greshake B, Tills O et al. (2017). An Annotated Draft Genome for _Radix auricularia_ (Gastropoda, Mollusca). _Genome Biology and Evolution_, 9(3):585–592, <https://doi.org/10.1093/gbe/evx032>
+
+__If you use this tool please cite the dependencies as well:__
+
+- samtools:  
+Li H, Handsaker B, Wysoker A, Fennell T, Ruan J et al. (2009). The Sequence Alignment/Map format and SAMtools. _Bioinformatics_, 25(16):2078–2079, <https://doi.org/10.1093/bioinformatics/btp352>
+- bwa mem:  
+Li H (2013). Aligning sequence reads, clone sequences and assembly contigs with BWA-MEM. _arXiv preprint arXiv:1303.3997_.
+- minimap2:  
+Li H (2018). Minimap2: pairwise alignment for nucleotide sequences. _Bioinformatics_, 34:3094–3100, <https://doi.org/10.1093/bioinformatics/bty191>
+- Qualimap:  
+Okonechnikov K, Conesa A, García-Alcalde F (2016). Qualimap 2: advanced multi-sample quality control for high-throughput sequencing data. _Bioinformatics_, 32(2):292–294, <https://doi.org/10.1093/bioinformatics/btv566>
+- MultiQC:  
+Ewels P, Magnusson M, Lundin S, Käller M (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. _Bioinformatics_, 32(19):3047–3048, <https://doi.org/10.1093/bioinformatics/btw354>
+- bedtools:  
+Quinlan AR, Hall IM (2010). BEDTools: a flexible suite of utilities for comparing genomic features. _Bioinformatics_, 26(6):841–842, <https://doi.org/10.1093/bioinformatics/btq033>
+- Rscript:  
+R Core Team (2019). R: A Language and Environment for Statistical Computing. <http://www.R-project.org/>
