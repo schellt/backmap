@@ -766,7 +766,8 @@ if($create_histo_switch == 1){
 		}
 		
 		if(defined(can_run("Rscript"))){
-			$cmd = "Rscript $cov_hist_file.plot.r > /dev/null 2> /dev/null";
+#			$cmd = "Rscript $cov_hist_file.plot.r > /dev/null 2> /dev/null";
+			$cmd = "Rscript $cov_hist_file.plot.r > $cov_hist_file.log 2> $cov_hist_file.err";
 			exe_cmd($cmd,$verbose,$dry);
 		}
 	});
@@ -822,7 +823,7 @@ if($create_histo_switch == 1){
 		}
 		
 		if(defined(can_run("Rscript"))){
-			$cmd = "Rscript $rscript > /dev/null 2> /dev/null";
+			$cmd = "Rscript $rscript > $rscript.log 2> $rscript.err";
 			exe_cmd($cmd,$verbose,$dry);
 		}
 	}

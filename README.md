@@ -22,7 +22,7 @@ Long read mapping:
 - [minimap2](https://github.com/lh3/minimap2): `minimap2`
 
 Optional:
-- [Qaulimap](http://qualimap.bioinfo.cipf.es/): `qualimap`
+- [Qualimap](http://qualimap.bioinfo.cipf.es/): `qualimap`
 - [MultiQC](https://multiqc.info/): `multiqc`
 - [bedtools](https://bedtools.readthedocs.io/en/latest/): `bedtools`
 - [Rscript](https://www.r-project.org/): `Rscript`
