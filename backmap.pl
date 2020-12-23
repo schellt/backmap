@@ -784,9 +784,11 @@ if($create_histo_switch == 1){
 			
 			open(RALL,'>',"$rscript") or die "ERROR\tCould not open file $rscript\n";
 			
+      print RALL "xmax <- 0\n";
 			for(my $i = 0; $i < scalar(@techs); $i++){
 				if(exists($cov_files{$techs[$i]})){
 					print RALL "$techs[$i]=read.table(\"$cov_files{$techs[$i]}\")\n";
+          print RALL "xmax <- max(xmax, $techs[$i]\[,1])\n";
 				}
 			}
 			my $pdf = $rscript;
@@ -795,12 +797,13 @@ if($create_histo_switch == 1){
 			my @legend = ();
 			my @lty = ();
 			my @col = ();
+      print RALL "plot(NULL,log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\",main=\"$assembly\",ylim=c(0,$global_ymax[0]), xlim=c(1,xmax))\n";
 			for(my $i = 0; $i < scalar(@techs); $i++){
 				if(exists $cov_files{$techs[$i]}){
 					push(@legend,"\"$techs[$i] N(0)=$n0_all{$techs[$i]}\"");
 					push(@lty,"1");
 					if($i == 0 and exists($cov_files{$techs[$i]})){
-						print RALL "plot($techs[$i]\[,1],$techs[$i]\[,2],log=\"x\",type=\"l\",xlab=\"Coverage\",ylab=\"Count\",main=\"$assembly\",ylim=c(0,$global_ymax[0]))\n";
+						print RALL "lines($techs[$i]\[,1],$techs[$i]\[,2],type=\"l\",col=\"black\")\n";
 						push(@col,"\"black\"");
 					}
 					if($i == 1 and exists($cov_files{$techs[$i]})){
