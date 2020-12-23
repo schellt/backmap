@@ -615,7 +615,7 @@ if($assembly_path ne ""){
 			my $single_bam = join(" ",@paired_bam,@unpaired_bam);
 			$single_bam =~ s/^\s+//;
 				$single_bam =~ s/\s+$//;
-			$cmd = "ln -s $single_bam $out_dir/$prefix.bam";
+			$cmd = "ln -fs $single_bam $out_dir/$prefix.bam";
 			exe_cmd($cmd,$verbose,$dry);
 			push(@merged_bam_file, "$out_dir/$prefix.bam");
 		}
@@ -629,7 +629,7 @@ if($assembly_path ne ""){
 	if(scalar(@pb_bam) > 0){
 		if(scalar(@pb_bam) == 1){
 			my $single_bam = $pb_bam[0];
-			$cmd = "ln -s $single_bam $out_dir/$prefix.pb.bam";
+			$cmd = "ln -fs $single_bam $out_dir/$prefix.pb.bam";
 			exe_cmd($cmd,$verbose,$dry);
 			push(@merged_bam_file, "$out_dir/$prefix.pb.bam");
 		}
@@ -643,7 +643,7 @@ if($assembly_path ne ""){
 	if(scalar(@ont_bam) > 0){
 		if(scalar(@ont_bam) == 1){
 			my $single_bam = $ont_bam[0];
-			$cmd = "ln -s $single_bam $out_dir/$prefix.ont.bam";
+			$cmd = "ln -fs $single_bam $out_dir/$prefix.ont.bam";
 			exe_cmd($cmd,$verbose,$dry);
 			push(@merged_bam_file, "$out_dir/$prefix.ont.bam");
 		}
