@@ -490,7 +490,7 @@ if($verbose == 1){
 
 my $keep_tmp_word = "No";
 if($keep_tmp == 1){
-	$$keep_tmp_word = "Yes";
+	$keep_tmp_word = "Yes";
 }
 
 my $run_bamqc_switch_word = "Yes";
