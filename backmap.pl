@@ -7,7 +7,7 @@ use IPC::Cmd qw[can_run run];
 use Number::FormatEng qw(:all);
 use Parallel::Loops;
 
-my $version = "0.3";
+my $version = "0.4";
 
 sub print_help{
 	print STDOUT "\n";
@@ -18,14 +18,15 @@ sub print_help{
 	print STDOUT "\n";
 	print STDOUT "Usage:\n";
 	print STDOUT "\tbackmap.pl [-a <assembly.fa> {-p <paired_1.fq>,<paired_2.fq> | -u <unpaired.fq> |\n";
-	print STDOUT "\t            -pb <pacbio.fq> | -ont <ont.fq> } | -b <mapping.bam>]\n";
+	print STDOUT "\t            -pb <clr.fq> | -hifi <hifi.fq> | -ont <ont.fq> } | -b <mapping.bam>]\n";
 	print STDOUT "\n";
 	print STDOUT "Mandatory:\n";
 	print STDOUT "\t-a STR\t\tAssembly were reads should mapped to in fasta format\n";
 	print STDOUT "\tAND AT LEAST ONE OF\n";
 	print STDOUT "\t-p STR\t\tTwo fastq files with paired Illumina reads comma sperated\n";
 	print STDOUT "\t-u STR\t\tFastq file with unpaired Illumina reads\n";
-	print STDOUT "\t-pb STR\t\tFasta or fastq file with PacBio reads\n";
+	print STDOUT "\t-pb STR\t\tFasta or fastq file with PacBio CLR reads\n";
+	print STDOUT "\t-hifi STR\tFasta or fastq file with PacBio HiFi reads\n";
 	print STDOUT "\t-ont STR\tFasta or fastq file with Nanopore reads\n";
 	print STDOUT "\tOR\n";
 	print STDOUT "\t-b STR\t\tBam file to calculate coverage from\n";
@@ -47,7 +48,7 @@ sub print_help{
 	print STDOUT "\t-ne\t\tDo not estimate genome size [off]\n";
 	print STDOUT "\t-kt\t\tKeep temporary bam files [off]\n";
 	print STDOUT "\t-bo STR\t\tOptions passed to bwa [-a -c 10000]\n";
-	print STDOUT "\t-mo STR\t\tOptions passed to minimap [PacBio: -H -x map-pb; ONT: -x map-ont]\n";
+	print STDOUT "\t-mo STR\t\tOptions passed to minimap [CLR: -H -x map-pb; HiFi: minimap<=2.18\n\t\t\t-x asm20 minimap>2.18 -x map-hifi; ONT: -x map-ont]\n";
 	print STDOUT "\t-qo STR\t\tOptions passed to qualimap [none]\n";
 	print STDOUT "\tPass options with quotes e.g. -bo \"<options>\"\n";
 	print STDOUT "\t-v\t\tPrint executed commands to STDERR [off]\n";
@@ -84,6 +85,7 @@ my $assembly = "";
 my @paired = ();
 my @unpaired = ();
 my @pb = ();
+my @hifi = ();
 my @ont = ();
 my $threads = 1;
 my $prefix = "";
@@ -129,6 +131,9 @@ for (my $i = 0; $i < scalar(@ARGV);$i++){
 	}
 	if ($ARGV[$i] eq "-pb"){
 		push(@pb,$ARGV[$i+1]);
+	}
+	if ($ARGV[$i] eq "-hifi"){
+		push(@hifi,$ARGV[$i+1]);
 	}
 	if ($ARGV[$i] eq "-ont"){
 		push(@ont,$ARGV[$i+1]);
@@ -250,7 +255,7 @@ if($assembly_path ne ""){
 		print STDERR "ERROR\tFile $assembly_path does not exist!\n";
 		$input_error = 1;
 	}
-	if(scalar(@paired) == 0 and scalar(@unpaired) == 0 and scalar(@pb) == 0 and scalar(@ont) == 0){
+	if(scalar(@paired) == 0 and scalar(@unpaired) == 0 and scalar(@pb) == 0 and scalar(@hifi) == 0 and scalar(@ont) == 0){
 		print STDERR "ERROR\tNo reads specified!\n";
 		$input_error = 1;
 	}
@@ -363,6 +368,24 @@ if($assembly_path ne ""){
 	}
 }
 
+my %hifi_filter;
+
+if($assembly_path ne ""){
+	foreach(@hifi){
+		if(not -f "$_"){
+			print STDERR "INFO\tNo file $_ - skipping this file\n";
+		}
+		else{
+			if(exists($hifi_filter{abs_path($_)})){
+				print STDERR "INFO\tFile " . abs_path($_) . " already specified\n";
+			}
+			else{
+				$hifi_filter{abs_path($_)} = 1;
+			}
+		}
+	}
+}
+
 my %ont_filter;
 
 if($assembly_path ne ""){
@@ -400,7 +423,7 @@ if(scalar(@bam) > 0){
 }
 
 if($assembly_path ne ""){
-	if(scalar(keys(%paired_filter)) == 0 and scalar(keys(%unpaired_filter)) == 0 and scalar(keys(%pb_filter)) == 0 and scalar(keys(%ont_filter)) == 0){
+	if(scalar(keys(%paired_filter)) == 0 and scalar(keys(%unpaired_filter)) == 0 and scalar(keys(%pb_filter)) == 0 and scalar(keys(%hifi_filter)) == 0 and scalar(keys(%ont_filter)) == 0){
 		print STDERR "ERROR\tNo existing read files specified!\n";
 		exit 1;
 	}
@@ -436,12 +459,16 @@ else{
 }
 
 my $minimap_version;
+my $minimap_minor_version;
 if(not defined(can_run("minimap2"))){
 	$minimap_version = "not detected";
 }
 else{
 	$minimap_version = `minimap2 --version`;
 	chomp $minimap_version;
+	$minimap_minor_version = $minimap_version;
+	$minimap_minor_version =~ s/-.*//;
+	$minimap_minor_version =~ s/^.*\.//;
 }
 
 my $samtools_version = `samtools --version | head -1 | sed 's/^samtools //'`;
@@ -592,6 +619,20 @@ foreach(keys(%pb_filter)){
 	push(@pb_bam,"$out_dir/$prefix.pb$pb_counter.bam");
 }
 
+my $hifi_counter = 0;
+my @hifi_bam = ();
+foreach(keys(%hifi_filter)){
+	$hifi_counter++;
+	if($minimap_minor_version <= 18){
+		$cmd = "minimap2 $minimap_opts-x asm20 -a -t $threads $assembly_path $_ 2> $out_dir/$prefix\_minimap_hifi$hifi_counter.err | samtools view -1 -b - > $out_dir/$prefix.hifi$hifi_counter.bam";
+	}
+	else{
+		$cmd = "minimap2 $minimap_opts-x map-hifi -a -t $threads $assembly_path $_ 2> $out_dir/$prefix\_minimap_hifi$hifi_counter.err | samtools view -1 -b - > $out_dir/$prefix.hifi$hifi_counter.bam";
+	}
+	exe_cmd($cmd,$verbose,$dry);
+	push(@hifi_bam,"$out_dir/$prefix.hifi$hifi_counter.bam");
+}
+
 my $ont_counter = 0;
 my @ont_bam = ();
 foreach(keys(%ont_filter)){
@@ -608,6 +649,7 @@ if($assembly_path ne ""){
 	my $paired_bam_files = join(" ",@paired_bam);
 	my $unpaired_bam_files = join(" ",@unpaired_bam);
 	my $pb_bam_files = join(" ",@pb_bam);
+	my $hifi_bam_files = join(" ",@hifi_bam);
 	my $ont_bam_files = join(" ",@ont_bam);
 	
 	if($ill_bam_count > 0){
@@ -637,6 +679,20 @@ if($assembly_path ne ""){
 			$cmd = "samtools merge -@ $samtools_threads $out_dir/$prefix.pb.bam $pb_bam_files";
 			exe_cmd($cmd,$verbose,$dry);
 			push(@merged_bam_file, "$out_dir/$prefix.pb.bam");
+		}
+	}
+
+	if(scalar(@hifi_bam) > 0){
+		if(scalar(@hifi_bam) == 1){
+			my $single_bam = $hifi_bam[0];
+			$cmd = "ln -fs $single_bam $out_dir/$prefix.hifi.bam";
+			exe_cmd($cmd,$verbose,$dry);
+			push(@merged_bam_file, "$out_dir/$prefix.hifi.bam");
+		}
+		else{
+			$cmd = "samtools merge -@ $samtools_threads $out_dir/$prefix.hifi.bam $hifi_bam_files";
+			exe_cmd($cmd,$verbose,$dry);
+			push(@merged_bam_file, "$out_dir/$prefix.hifi.bam");
 		}
 	}
 	
@@ -676,7 +732,7 @@ if($assembly_path ne "" or $sort_bam_switch == 1){
 	}
 	
 	if($keep_tmp == 0){
-		my $tmp_bams = join(" ",@paired_bam,@unpaired_bam,@pb_bam,@ont_bam,@merged_bam_file);
+		my $tmp_bams = join(" ",@paired_bam,@unpaired_bam,@pb_bam,@hifi_bam,@ont_bam,@merged_bam_file);
 		$cmd = "rm $tmp_bams";
 		exe_cmd($cmd,$verbose,$dry);
 	}
@@ -720,7 +776,10 @@ if($create_histo_switch == 1){
 		
 		my $tech = "Illumina";
 		if($_ =~ m/\.pb\.sort\.bam$/){
-			$tech = "PacBio";
+			$tech = "CLR";
+		}
+		if($_ =~ m/\.hifi\.sort\.bam$/){
+			$tech = "HiFi";
 		}
 		if($_ =~ m/\.ont\.sort\.bam$/){
 			$tech = "Nanopore";
@@ -780,7 +839,7 @@ if($create_histo_switch == 1){
 			$rscript = "$out_dir/$prefix.plot.all.r";
 		}
 		if($dry == 0){
-			my @techs = ("Illumina","PacBio","Nanopore");
+			my @techs = ("Illumina","CLR","HiFi","Nanopore");
 			
 			open(RALL,'>',"$rscript") or die "ERROR\tCould not open file $rscript\n";
 			
@@ -811,6 +870,10 @@ if($create_histo_switch == 1){
 						push(@col,"\"blue\"");
 					}
 					if($i == 2 and exists($cov_files{$techs[$i]})){
+						print RALL "lines($techs[$i]\[,1],$techs[$i]\[,2],type=\"l\",col=\"darkgreen\")\n";
+						push(@col,"\"darkgreen\"");
+					}
+					if($i == 3 and exists($cov_files{$techs[$i]})){
 						print RALL "lines($techs[$i]\[,1],$techs[$i]\[,2],type=\"l\",col=\"red\")\n";
 						push(@col,"\"red\"");
 					}
@@ -852,7 +915,10 @@ if($estimate_genome_size_switch == 1){
 			
 			my $tech = "Illumina";
 			if($_ =~ m/\.pb\.sort\.bam$/){
-				$tech = "PacBio";
+				$tech = "CLR";
+			}
+			if($_ =~ m/\.hifi\.sort\.bam$/){
+				$tech = "HiFi";
 			}
 			if($_ =~ m/\.ont\.sort\.bam$/){
 				$tech = "Nanopore";
@@ -891,7 +957,7 @@ if($estimate_genome_size_switch == 1){
 		print "Output\n";
 		print "======\n";
 		
-		my @techs = ("Illumina","PacBio","Nanopore");
+		my @techs = ("Illumina","CLR","HiFi","Nanopore");
 		for (my $i = 0; $i < scalar(@techs); $i++){
 			if(exists($results{$techs[$i]})){
 				print $results{$techs[$i]};

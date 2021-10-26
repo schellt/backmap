@@ -1,4 +1,4 @@
-# backmap.pl v0.3
+# backmap.pl v0.4
 
 ## Description
 __Automatic read mapping and genome size estimation from coverage.__
@@ -31,14 +31,15 @@ Optional:
 
 ```
 backmap.pl [-a <assembly.fa> {-p <paired_1.fq>,<paired_2.fq> | -u <unpaired.fq>} |
-            -pb <pacbio.fq> | -ont <ont.fq> } | -b <mapping.bam>]
+            -pb <clr.fq> | -hifi <hifi.fq> | -ont <ont.fq> } | -b <mapping.bam>]
 
 Mandatory:
 	-a STR		Assembly were reads should mapped to in fasta format
 	AND AT LEAST ONE OF
 	-p STR		Two files with paired Illumina reads comma sperated
 	-u STR		Fastq file with unpaired Illumina reads
-	-pb STR		Fasta or fastq file with PacBio reads
+	-pb STR		Fasta or fastq file with PacBio CLR reads
+	-hifi STR	Fasta or fastq file with PacBio HiFi reads
 	-ont STR	Fasta or fastq file with Nanopore reads
 	OR
 	-b STR		Bam file to calculate coverage from
@@ -63,7 +64,8 @@ Options: [default]
 	-ne		Do not estimate genome size [off]
 	-kt		Keep temporary bam files [off]
 	-bo STR		Options passed to bwa [-a -c 10000]
-	-mo STR		Options passed to minimap [PacBio: -H -x map-pb; ONT: -x map-ont]
+	-mo STR		Options passed to minimap [CLR: -H -x map-pb; HiFi:  minimap<=2.18
+			-x asm20 minimap>2.18 -x map-hifi; ONT: -x map-ont]
 	-qo STR		Options passed to qualimap [none]
 	Pass options with quotes e.g. -bo "<options>"
 	-v		Print executed commands to STDERR [off]
@@ -91,4 +93,4 @@ Ewels P, Magnusson M, Lundin S, Käller M (2016). MultiQC: summarize analysis re
 - bedtools:  
 Quinlan AR, Hall IM (2010). BEDTools: a flexible suite of utilities for comparing genomic features. _Bioinformatics_, 26(6):841–842, <https://doi.org/10.1093/bioinformatics/btq033>
 - Rscript:  
-R Core Team (2019). R: A Language and Environment for Statistical Computing. <http://www.R-project.org/>
+R Core Team (2021). R: A Language and Environment for Statistical Computing. <http://www.R-project.org/>
