@@ -1,9 +1,9 @@
-# backmap.pl v0.4
+# backmap.pl v0.5
 
 ## Description
 __Automatic read mapping and genome size estimation from coverage.__
 
-Automatic mapping of paired, unpaired, PacBio and Nanopore reads to an assembly with `bwa mem` or `minimap2`, execution of `qualimap bamqc` and estimation of genome size from mapped nucleotides divided by mode of the coverage distribution (>0). This method was first pulished in Schell et al. (2017) and is slightly refined in this script.  
+Automatic mapping of paired, unpaired, PacBio and Nanopore reads to an assembly with `bwa mem` or `minimap2`, execution of `qualimap bamqc` and estimation of genome size from mapped nucleotides divided by mode of the coverage distribution (>0). This method was first pulished in Schell et al. (2017). To show high accuracy and reliability of this method throughout the tree of life, Pfenninger et al. (2021) published a study comparing different estimators. Currently, the estimator N<sub>bm</sub>/m (number of back-mapped bases divided by the modal value of the sequencing depth distribution) is implemented in this script only.  
 The tools `samtools`, `bwa` and/or `minimap2` need to be in your `$PATH`. The tools `qualimap`, `multiqc`, `bedtools` and `Rscript` are optional but needed to create the mapping quality report, coverage histogram as well as genome size estimation and to plot of the coverage distribution respectively.
 
 ## Dependencies
@@ -46,8 +46,9 @@ Mandatory:
 			Skips read mapping
 			Overrides -nh
 			Technologies will recognized correctly if filenames end with
-			.pb(.sort).bam or .ont(.sort).bam for PacBio and Nanopore respectively.
-			Otherwise they are assumed to be from Illumina.
+			.pb(.sort).bam, .hifi(.sort).bam or .ont(.sort).bam for PacBio CLR,
+			PacBio HiFi and Nanopore respectively. Otherwise they are assumed to
+			be from Illumina.
 			
 	All mandatory options except of -a can be specified multiple times
 
@@ -55,7 +56,7 @@ Options: [default]
 	-o STR		Output directory [.]
 			Will be created if not existing
 	-t INT		Number of parallel executed processes [1]
-			Affects bwa mem, samtools sort, qualimap bamqc
+			Affects bwa mem, samtools sort/index/view/stats, qualimap bamqc
 	-pre STR	Prefix of output files if -a is used [filename of -a]
 	-sort		Sort the bam file(s) (-b) [off]
 	-nq		Do not run qualimap bamqc [off]
@@ -76,6 +77,8 @@ Options: [default]
 ```
 
 ## Citation
+Pfenninger M, Schönenbeck P & Schell T (2021). ModEst: Accurate estimation of genome size from next generation sequencing data. _Molecular ecology resources_, 00, 1–11. <https://doi.org/10.1111/1755-0998.13570>  
+
 Schell T, Feldmeyer B, Schmidt H, Greshake B, Tills O et al. (2017). An Annotated Draft Genome for _Radix auricularia_ (Gastropoda, Mollusca). _Genome Biology and Evolution_, 9(3):585–592, <https://doi.org/10.1093/gbe/evx032>
 
 __If you use this tool please cite the dependencies as well:__

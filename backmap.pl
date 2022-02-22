@@ -7,7 +7,7 @@ use IPC::Cmd qw[can_run run];
 use Number::FormatEng qw(:all);
 use Parallel::Loops;
 
-my $version = "0.4";
+my $version = "0.5";
 
 sub print_help{
 	print STDOUT "\n";
@@ -32,14 +32,15 @@ sub print_help{
 	print STDOUT "\t-b STR\t\tBam file to calculate coverage from\n";
 	print STDOUT "\t\t\tSkips read mapping\n";
 	print STDOUT "\t\t\tOverrides -nh\n";
-	print STDOUT "\t\t\tTechnologies will recognized correctly if filenames end with\n\t\t\t.pb(.sort).bam or .ont(.sort).bam for PacBio and Nanopore respectively.\n\t\t\tOtherwise they are assumed to be from Illumina.\n";
+	print STDOUT "\t\t\tTechnologies will recognized correctly if filenames end with\n\t\t\t.pb(.sort).bam, .hifi(.sort).bam or .ont(.sort).bam for PacBio CLR,\n\t\t\tPacBio HiFi and Nanopore respectively. Otherwise they are assumed to\n\t\t\tbe from Illumina.\n";
+	print STDOUT "\n";
 	print STDOUT "\tAll mandatory options except of -a can be specified multiple times\n";
 	print STDOUT "\n";
 	print STDOUT "Options: [default]\n";
 	print STDOUT "\t-o STR\t\tOutput directory [.]\n";
 	print STDOUT "\t\t\tWill be created if not existing\n";
 	print STDOUT "\t-t INT\t\tNumber of parallel executed processes [1]\n";
-	print STDOUT "\t\t\tAffects bwa mem, samtools sort, qualimap bamqc\n";
+	print STDOUT "\t\t\tAffects bwa mem, samtools sort/index/view/stats, qualimap bamqc\n";
 	print STDOUT "\t-pre STR\tPrefix of output files if -a is used [filename of -a]\n";
 	print STDOUT "\t-sort\t\tSort the bam file(s) (-b) [off]\n";
 	print STDOUT "\t-nq\t\tDo not run qualimap bamqc [off]\n";
@@ -210,7 +211,7 @@ if($assembly_path ne "" and scalar(@bam) == 0){
 			$input_error = 1;
 		}
 	}
-	if(scalar(@pb) > 0 or scalar(@ont) > 0){
+	if(scalar(@pb) > 0 or scalar(@hifi) > 0 or scalar(@ont) > 0){
 		if(not defined(can_run("minimap2"))){
 			print STDERR "ERROR\tminimap2 is not in your \$PATH\n";
 			$input_error = 1;
@@ -738,6 +739,11 @@ if($assembly_path ne "" or $sort_bam_switch == 1){
 	}
 }
 
+foreach(@sorted_bams){
+	$cmd = "samtools index -@ $samtools_threads $_";
+	exe_cmd($cmd,$verbose,$dry);
+}
+
 if($run_bamqc_switch == 1){
 	if(defined(can_run("qualimap"))){
 		foreach(@sorted_bams){
@@ -766,6 +772,13 @@ if($threads < $maxProcs){
 
 if($create_histo_switch == 1){
 	
+	foreach(@sorted_bams){
+		my $filename = (split(/\//,$_))[-1];
+		my $cov_hist_file = "$out_dir/$filename.cov-hist";
+		$cmd = "samtools view -@ $samtools_threads -b -h -F 256 $_ | bedtools genomecov -ibam stdin -d | awk \'{print \$3}\' | sort -g | uniq -c | awk '{print \$2\"\\t\"\$1}' > $cov_hist_file";
+		exe_cmd($cmd,$verbose,$dry);
+	}
+	
 	my $multiple_histos = Parallel::Loops->new($maxProcs);
 	$multiple_histos->share(\%cov_files);
 	$multiple_histos->share(\%peak_cov);
@@ -787,8 +800,6 @@ if($create_histo_switch == 1){
 		
 		my $filename = (split(/\//,$_))[-1];
 		my $cov_hist_file = "$out_dir/$filename.cov-hist";
-		$cmd = "samtools view -b -h -F 256 $_ | bedtools genomecov -ibam stdin -d | awk \'{print \$3}\' | sort -g | uniq -c | awk '{print \$2\"\\t\"\$1}' > $cov_hist_file";
-		exe_cmd($cmd,$verbose,$dry);
 		
 		$cov_files{$tech} = $cov_hist_file;
 		
@@ -899,7 +910,12 @@ if($create_histo_switch == 1){
 if($estimate_genome_size_switch == 1){
 	
 	my %results;
-		
+	
+	foreach(@sorted_bams){
+		$cmd = "samtools stats -@ $samtools_threads $_ > $_.stats 2> $_.stats.err";
+		exe_cmd($cmd,$verbose,$dry);
+	}
+
         my $multiple_genome_size = Parallel::Loops->new($maxProcs);
         $multiple_genome_size->share(\%results);
 	
@@ -908,8 +924,8 @@ if($estimate_genome_size_switch == 1){
 			print STDERR "CMD\tsort -rgk2 $_.cov-hist | awk \'\$1!=0{print \$1}\' | head -1\n";
 		}
 		
-		$cmd = "samtools stats $_ > $_.stats 2> $_.stats.err";
-		exe_cmd($cmd,$verbose,$dry);
+#		$cmd = "samtools stats $_ > $_.stats 2> $_.stats.err";
+#		exe_cmd($cmd,$verbose,$dry);
 		
 		if($dry == 0){
 			
