@@ -67,6 +67,7 @@ Options: [default]
 	-bo STR		Options passed to bwa [-a -c 10000]
 	-mo STR		Options passed to minimap [CLR: -H -x map-pb; HiFi:  minimap<=2.18
 			-x asm20 minimap>2.18 -x map-hifi; ONT: -x map-ont]
+	-sio STR	Options passed to samtools index [none]
 	-qo STR		Options passed to qualimap [none]
 	Pass options with quotes e.g. -bo "<options>"
 	-v		Print executed commands to STDERR [off]

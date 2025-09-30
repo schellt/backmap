@@ -7,7 +7,7 @@ use IPC::Cmd qw[can_run run];
 use Number::FormatEng qw(:all);
 use Parallel::Loops;
 
-my $version = "0.5";
+my $version = "0.6";
 
 sub print_help{
 	print STDOUT "\n";
@@ -50,6 +50,7 @@ sub print_help{
 	print STDOUT "\t-kt\t\tKeep temporary bam files [off]\n";
 	print STDOUT "\t-bo STR\t\tOptions passed to bwa [-a -c 10000]\n";
 	print STDOUT "\t-mo STR\t\tOptions passed to minimap [CLR: -H -x map-pb; HiFi: minimap<=2.18\n\t\t\t-x asm20 minimap>2.18 -x map-hifi; ONT: -x map-ont]\n";
+	print STDOUT "\t-sio STR\tOptions passed to samtools index [none]\n";
 	print STDOUT "\t-qo STR\t\tOptions passed to qualimap [none]\n";
 	print STDOUT "\tPass options with quotes e.g. -bo \"<options>\"\n";
 	print STDOUT "\t-v\t\tPrint executed commands to STDERR [off]\n";
@@ -94,6 +95,7 @@ my $verbose = 0;
 my $bwa_opts = "-a -c 10000 ";
 my $minimap_opts = "";
 my $qm_opts = "";
+my $samtools_idx_opts = "";
 my $create_histo_switch = 1;
 my $estimate_genome_size_switch = 1;
 my $run_bamqc_switch = 1;
@@ -164,6 +166,10 @@ for (my $i = 0; $i < scalar(@ARGV);$i++){
 	}
 	if ($ARGV[$i] eq "-qo"){
 		$qm_opts = $ARGV[$i+1] . " ";	#nonsense flags are skipped from qualimap
+		$ARGV[$i+1] = "\'$ARGV[$i+1]\'";
+	}
+	if ($ARGV[$i] eq "-sio"){
+		$samtools_idx_opts = $ARGV[$i+1] . " ";
 		$ARGV[$i+1] = "\'$ARGV[$i+1]\'";
 	}
 	if ($ARGV[$i] eq "-nq"){
@@ -740,7 +746,7 @@ if($assembly_path ne "" or $sort_bam_switch == 1){
 }
 
 foreach(@sorted_bams){
-	$cmd = "samtools index -@ $samtools_threads $_";
+	$cmd = "samtools index $samtools_idx_opts-@ $samtools_threads $_";
 	exe_cmd($cmd,$verbose,$dry);
 }
 
